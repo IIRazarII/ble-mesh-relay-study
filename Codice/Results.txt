@@ -1,9 +1,0 @@
-rng(1, "twister");
-
---- Performance Results (Stateful Preemption) ---
-Pair 1 (Node 67 -> 69): Tx=401, Rx=400, PDR=99.75%
-Pair 2 (Node 68 -> 70): Tx=401, Rx=400, PDR=99.75%
-
-OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 99.75 %
-Average End-to-End Latency: 0.2730 seconds
