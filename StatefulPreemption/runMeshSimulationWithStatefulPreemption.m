@@ -1,9 +1,14 @@
 %% BLE Mesh Performance Simulation - Stateful Preemption Evaluation
 % This script replicates the experimental setup from the paper:
-% "Relaying Mechanisms in BLE Mesh Networks: A Method for Improving Latency and Reliability"
+% Belli et al., "Relaying Mechanisms in BLE Mesh Networks: A Method for Improving Latency and Reliability,"
+% IEEE Internet of Things Journal, 2025. DOI: 10.1109/JIOT.2025.3550831
+%
 % All parameters are tuned to match the "Grid Topology" (Experiment A).
 
 clear; clc; close all;
+
+% Set the seed to ensure stable and reproducible results
+rng(1, "twister");
 
 %% 1. Simulation Constants (from Paper Table I)
 NODES_DISTANCE = 8;             % Distance between grid nodes in meters
@@ -98,10 +103,10 @@ for p = 1:numel(srcIDs)
 end
 
 %% 6. Run Simulation
-fprintf('Running simulation for %d seconds (Broadcast Storm scenario)...\n', SIM_TIME);
+fprintf('[%s] Running simulation for %d seconds (Broadcast Storm scenario)...\n', string(datetime('now', 'Format', 'HH:mm:ss')), SIM_TIME);
 addNodes(simulator, nodes);
 run(simulator, SIM_TIME);
-fprintf('Simulation complete.\n');
+fprintf('[%s] Simulation complete.\n', string(datetime('now', 'Format', 'HH:mm:ss')));
 
 %% 7. Post-Simulation Analysis (PDR and Latency)
 fprintf('\n--- Performance Results (Stateful Preemption) ---\n');

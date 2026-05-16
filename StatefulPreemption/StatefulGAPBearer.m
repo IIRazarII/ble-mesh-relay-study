@@ -1,15 +1,14 @@
 classdef StatefulGAPBearer < ble.internal.linkLayerGAPBearer
-    % This class implements the "Stateful Preemption" mechanism.
-    % It ensures the scanning process resumes from the interrupted channel
-    % and completes the remaining Scan Interval duration.
+% This class implements the Stateful Preemption mechanism described in:
+% Belli et al., "Relaying Mechanisms in BLE Mesh Networks: A Method for Improving Latency and Reliability,"
+% IEEE Internet of Things Journal, 2025. DOI: 10.1109/JIOT.2025.3550831
+%
+% It ensures that the scanning process resumes from the interrupted channel
+% and completes the remaining scan interval duration.
 
-    properties (Access = protected)
+properties (Access = protected)
         TRSI = 0                % Remaining Scan Interval time in microseconds
         SavedChannelIndex = -1  % Index of the channel where scanning was interrupted
-        
-        % Real-time logging variables
-        EnableLogging = true;   % Toggle to enable/disable console logging
-        PrintInterval = 5e6;    % Print every 5,000,000 microseconds (5 simulated seconds)
     end
 
     methods
@@ -20,35 +19,6 @@ classdef StatefulGAPBearer < ble.internal.linkLayerGAPBearer
             
             % Enable preemption to allow advertising to interrupt scanning
             obj.PreemptiveScanning = true; 
-        end
-        
-        % Override the run function to add shared optional logging
-        function [nextInvokeTime, txLLPacket] = run(obj, currentTime, rxLLPacket)
-            % Execute the original state machine logic
-            if nargin == 3
-                [nextInvokeTime, txLLPacket] = run@ble.internal.linkLayerGAPBearer(obj, currentTime, rxLLPacket);
-            else
-                [nextInvokeTime, txLLPacket] = run@ble.internal.linkLayerGAPBearer(obj, currentTime);
-            end
-            
-            % --- REAL-TIME LOGGING (SHARED ACROSS ALL NODES) ---
-            % Use a persistent variable so it's shared among all class instances
-            persistent globalLastPrintTime;
-            
-            % Reset the timer if it's a completely new simulation run
-            if isempty(globalLastPrintTime) || currentTime < globalLastPrintTime
-                globalLastPrintTime = 0;
-            end
-            
-            % Print a message only if logging is enabled and the interval has passed.
-            % Since the variable is persistent, only the first node reaching the 
-            % time threshold will print, preventing console spam.
-            if obj.EnableLogging && (currentTime - globalLastPrintTime >= obj.PrintInterval)
-                fprintf('Simulation Time: %.2f seconds\n', currentTime / 1e6);
-                
-                % Update the shared timer
-                globalLastPrintTime = currentTime;
-            end
         end
     end
 
