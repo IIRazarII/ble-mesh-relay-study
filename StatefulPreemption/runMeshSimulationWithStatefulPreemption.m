@@ -14,16 +14,16 @@ rng(1, "twister");
 NODES_DISTANCE = 8;             % Distance between grid nodes in meters
 PACKET_SIZE = 15;               % Application layer payload size in bytes
 TTL_VALUE = 127;                % Time-To-Live for network PDUs
-SOURCE_RATE = 1;                % 1 packet per second
-TOTAL_PACKETS = 400;            % 400 messages per source
+SOURCE_RATE = 1;                % packets per second
+TOTAL_PACKETS = 400;            % Number of messages per source
 SIM_TIME = 400;                 % Simulation duration in seconds
-SCAN_INTERVAL = 0.1;            % T_si (set to 100ms as a representative value)
+SCAN_INTERVAL = 0.1;            % T_si
 SCAN_WINDOW = SCAN_INTERVAL;    % Scan Window = Scan Interval
 RECEPTION_RANGE = 9;            % Range in meters (9m for grid-only relaying)
 
 % Network Transmissions (1 original + 1 replica)
 NET_TRANSMISSIONS = 2;          
-NET_TRANSMIT_INTERVAL = 30e-3;  % 30ms between replicas
+NET_TRANSMIT_INTERVAL = 30e-3;  % ms between replicas
 
 fprintf('--- Initializing BLE Mesh Stateful Preemption Simulation ---\n');
 
