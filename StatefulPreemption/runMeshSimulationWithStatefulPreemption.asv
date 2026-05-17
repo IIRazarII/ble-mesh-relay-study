@@ -38,7 +38,7 @@ numRelays = size(relayPositions, 1); % 66 Relays
 % Define Source and Destination positions (Experiment A: 2 pairs)
 % Sources on the leftmost side, Destinations on the rightmost
 sourcePos = [0, 36; 0, 4];
-destPos = [80, 4; 80, 36];
+destPos = [(cols-1)*NODES_DISTANCE, 4; (cols-1)*NODES_DISTANCE, 36];
 
 allPositions = [relayPositions; sourcePos; destPos];
 numTotalNodes = size(allPositions, 1);
