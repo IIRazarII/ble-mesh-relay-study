@@ -1,20 +1,16 @@
+10 ms
+
 rng(1, "twister");
 
 --- Performance Results (Stateful Preemption) ---
-Pair 1 (Node 67 -> 69): Tx=401, Rx=400, PDR=99.75%
-Pair 2 (Node 68 -> 70): Tx=401, Rx=400, PDR=99.75%
+Pair 1 (Node 67 -> 69): Tx=401, Rx=43, PDR=10.72%
+Pair 2 (Node 68 -> 70): Tx=401, Rx=44, PDR=10.97%
 
 OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 99.75 %
-Average End-to-End Latency: 0.2738 seconds
-
-
---- Performance Results (Stateful Preemption) ---
-Pair 1 (Node 67 -> 69): Tx=401, Rx=400, PDR=99.75%
-Pair 2 (Node 68 -> 70): Tx=401, Rx=400, PDR=99.75%
+Aggregate Packet Delivery Ratio (PDR): 10.85 %
+Average End-to-End Latency: 0.2868 seconds
 
 rng(2, "twister");
 
-OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 99.75 %
-Average End-to-End Latency: 0.2742 seconds
+Aggregate Packet Delivery Ratio (PDR): 10.22 %
+Average End-to-End Latency: 0.2783 seconds
