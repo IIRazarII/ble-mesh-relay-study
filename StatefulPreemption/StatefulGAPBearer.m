@@ -5,6 +5,8 @@ classdef StatefulGAPBearer < ble.internal.linkLayerGAPBearer
 %
 % It ensures that the scanning process resumes from the interrupted channel
 % and completes the remaining scan interval duration.
+%
+% Note: This script has only been verified to work with MATLAB R2025b.
 
     properties (Access = protected)
         TRSI = 0                % Remaining Scan Interval time in microseconds
@@ -70,6 +72,28 @@ classdef StatefulGAPBearer < ble.internal.linkLayerGAPBearer
                 % Reset state memory for the next full Scan Interval cycle
                 obj.TRSI = 0; 
             end
+        end
+
+        % 3. OVERRIDE GETRANDOMADVERTISINGINSTANCES: Custom [1, 10] ms T_ChPDU Interval
+        function advInstances = getRandomAdvertisingInstances(obj)
+            % Initialize the advertising instances with zeros
+            advInstances = zeros(1,3);
+            initialGap = 1000; % 1 ms minimum gap in microseconds
+            
+            % Set to 10000 us to ensure the max gap between intervals reaches 
+            % exactly 10 ms
+            advGapInUs = 10000; 
+
+            % First advertising instance
+            advInstances(1) = randi([initialGap advGapInUs]);
+            
+            % Second advertising instance
+            advInstances(2) = randi([advInstances(1) + obj.USecPerMSec, ...
+                advInstances(1) + obj.USecPerMSec + advGapInUs]);
+            
+            % Third advertising instance
+            advInstances(3) = randi([advInstances(2) + obj.USecPerMSec, ...
+                min(advInstances(2) + obj.USecPerMSec + advGapInUs, round(obj.AdvertisingInterval*1e6,3))]);
         end
     end
 end

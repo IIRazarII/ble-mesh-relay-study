@@ -8,7 +8,7 @@
 clear; clc; close all;
 
 % Set the seed to ensure stable and reproducible results
-rng(1, "twister");
+rng(2, "twister");
 
 %% 1. Simulation Constants (from Paper Table I & II)
 NODES_DISTANCE = 8;             % Distance between grid nodes in meters
@@ -73,8 +73,7 @@ for i = 1:numTotalNodes
         ReceiverRange = RECEPTION_RANGE, ...
         AdvertisingInterval = 20e-3, ...
         ScanInterval = SCAN_INTERVAL, ...
-        PreemptiveScanning = true, ...
-        RandomAdvertising = true); 
+        PreemptiveScanning = true); 
 end
 
 %% 4.1 Basic Network Visualization

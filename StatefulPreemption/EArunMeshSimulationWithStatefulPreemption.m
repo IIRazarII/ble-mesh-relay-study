@@ -4,6 +4,8 @@
 % IEEE Internet of Things Journal, 2025. DOI: 10.1109/JIOT.2025.3550831
 %
 % All parameters are tuned to match the "Grid Topology" (Experiment A).
+%
+% Note: This script has only been verified to work with MATLAB R2025b.
 
 clear; clc; close all;
 

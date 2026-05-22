@@ -1,0 +1,7 @@
+--- Performance Results ---
+Pair 1 (Node 21 -> 23): Tx=401, Rx=374, PDR=93.27%
+Pair 2 (Node 22 -> 24): Tx=401, Rx=365, PDR=91.02%
+
+OVERALL RESULTS:
+Aggregate Packet Delivery Ratio (PDR): 92.14 %
+Average End-to-End Latency: 0.1127 seconds

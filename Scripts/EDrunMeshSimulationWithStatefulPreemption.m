@@ -4,6 +4,8 @@
 % IEEE Internet of Things Journal, 2025. DOI: 10.1109/JIOT.2025.3550831
 %
 % All parameters are tuned to match "Experiment D" (Grid Topology).
+%
+% Note: This script has only been verified to work with MATLAB R2025b.
 
 clear; clc; close all;
 
@@ -25,7 +27,19 @@ RECEPTION_RANGE = 9;            % Range in meters
 NET_TRANSMISSIONS = 2;          
 NET_TRANSMIT_INTERVAL = 30e-3;  % seconds between replicas
 
-fprintf('--- Initializing BLE Mesh Stateful Preemption Simulation (Experiment D) ---\n');
+% Custom Relay Strategy Settings
+% 0 = Without Preemption, 1 = Stateless Preemption, 2 = Stateful Preemption
+RELAY_STRATEGY = 2;             
+ADV_MIN_GAP = 1;                % Minimum T_ChPDU gap in ms
+ADV_MAX_GAP = 10;               % Maximum T_ChPDU gap in ms            
+strategyNames = ["Without Preemption", "Stateless Preemption", "Stateful Preemption"];
+
+fprintf('\n======================================================\n');
+fprintf('   BLE Mesh Simulation (Experiment D) Initialized\n');
+fprintf('======================================================\n');
+fprintf(' Relay Strategy : %s\n', strategyNames(RELAY_STRATEGY + 1));
+fprintf(' Scan Interval  : %.2f ms\n', SCAN_INTERVAL * 1000);
+fprintf('======================================================\n\n');
 
 %% 2. Create Grid Topology (Experiment D: 20 Relays, 2 Sources, 2 Dest)
 % 20 Relays distributed in a 5x4 grid
@@ -48,7 +62,8 @@ numTotalNodes = size(allPositions, 1); % 24 Total Nodes
 simulator = wirelessNetworkSimulator.init;
 
 %% 4. Create and Configure Nodes
-nodes = bluetoothLENode.empty(0, numTotalNodes);
+% Use the CustomMeshNode subclass to inject the ConfigurableGAPBearer
+nodes = CustomMeshNode.empty(0, numTotalNodes);
 
 for i = 1:numTotalNodes
     % Configure Mesh Profile
@@ -61,23 +76,23 @@ for i = 1:numTotalNodes
     % Enable Relay for grid nodes (1 to 20)
     if i <= numRelays
         meshCfg.Relay = true;
-        %meshCfg.RelayRetransmissions = 2; % Not specified on the paper 
-        %meshCfg.RelayRetransmitInterval = 30e-3; % Not specified on the paper
     end
 
-    % Create Node using custom bluetoothLENode (which uses StatefulGAPBearer)
-    nodes(i) = bluetoothLENode("broadcaster-observer", ...
+    % Create Node using the custom subclass
+    nodes(i) = CustomMeshNode("broadcaster-observer", ...
         MeshConfig = meshCfg, ...
         Position = [allPositions(i, :) 0], ...
         Name = "Node_" + i, ...
         ReceiverRange = RECEPTION_RANGE, ...
         AdvertisingInterval = 20e-3, ...
         ScanInterval = SCAN_INTERVAL, ...
-        PreemptiveScanning = true, ...
-        RandomAdvertising = true); 
+        RandomAdvertising = true, ...
+        RelayStrategy = RELAY_STRATEGY, ...
+        RandomAdvMinGap = ADV_MIN_GAP, ...
+        RandomAdvMaxGap = ADV_MAX_GAP); 
 end
 
-%% 4.1 Basic Network Visualization
+%% 5. Basic Network Visualization
 fprintf('Drawing the network topology map...\n');
 figure('Name', 'BLE Mesh Network Topology - Experiment D', 'Position', [100, 100, 700, 500]);
 hold on; grid on;
@@ -110,7 +125,7 @@ text(destPos(2,1)+3, destPos(2,2), 'D4', 'FontWeight', 'bold');
 hold off;
 drawnow;
 
-%% 5. Configure Traffic (1 packet/sec)
+%% 6. Configure Traffic (1 packet/sec)
 fprintf('Configuring 1 packet/sec traffic for Source/Destination pairs...\n');
 
 % The nodes are created in order: Relays (1:20), Sources (21:22), Dest (23:24)
@@ -139,14 +154,14 @@ for p = 1:numel(srcIDs)
         TTL = TTL_VALUE);
 end
 
-%% 6. Run Simulation
+%% 7. Run Simulation
 fprintf('[%s] Running simulation for %d seconds...\n', string(datetime('now', 'Format', 'HH:mm:ss')), SIM_TIME);
 addNodes(simulator, nodes);
 run(simulator, SIM_TIME);
 fprintf('[%s] Simulation complete.\n', string(datetime('now', 'Format', 'HH:mm:ss')));
 
 %% 7. Post-Simulation Analysis (PDR and Latency)
-fprintf('\n--- Performance Results (Stateful Preemption) ---\n');
+fprintf('\n--- Performance Results ---\n');
 
 totalTx = 0;
 totalRx = 0;
