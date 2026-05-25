@@ -93,7 +93,7 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
                 end
                 
                 % Reset state memory for the next full Scan Interval cycle
-                obj.TRSI = 0; 
+                obj.TRSI = 0;
             end
         end
 
@@ -123,7 +123,13 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
             
             % Second advertising instance
             minSecond = advInstances(1) + minUs;
-            maxSecond = advInstances(1) + maxUs;
+            % Cap the second instance so it always leaves at least 'minUs'
+            % space before the 20ms boundary for the third packet
+            maxSecond = min(advInstances(1) + maxUs, round(obj.AdvertisingInterval*1e6,3) - minUs);
+            
+            if maxSecond < minSecond
+                maxSecond = minSecond;
+            end
             advInstances(2) = randi([minSecond, maxSecond]);
             
             % Third advertising instance
