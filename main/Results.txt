@@ -13,32 +13,31 @@ Average End-to-End Latency: 0.0971 seconds
 rng(2, "twister");
 
 --- Performance Results ---
-Pair 1 (Node 21 -> 23): Tx=401, Rx=363, PDR=90.52%
-Pair 2 (Node 22 -> 24): Tx=401, Rx=355, PDR=88.53%
+Pair 1 (Node 21 -> 23): Tx=401, Rx=356, PDR=88.78%
+Pair 2 (Node 22 -> 24): Tx=401, Rx=342, PDR=85.29%
 
 OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 89.53 %
-Average End-to-End Latency: 0.1162 seconds
+Aggregate Packet Delivery Ratio (PDR): 87.03 %
+Average End-to-End Latency: 0.0964 seconds
 
 rng(3, "twister");
 
 --- Performance Results ---
-Pair 1 (Node 21 -> 23): Tx=401, Rx=362, PDR=90.27%
-Pair 2 (Node 22 -> 24): Tx=401, Rx=351, PDR=87.53%
+Pair 1 (Node 21 -> 23): Tx=401, Rx=355, PDR=88.53%
+Pair 2 (Node 22 -> 24): Tx=401, Rx=363, PDR=90.52%
 
 OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 88.90 %
-Average End-to-End Latency: 0.1118 seconds
+Aggregate Packet Delivery Ratio (PDR): 89.53 %
+Average End-to-End Latency: 0.0969 seconds
 
 rng(4, "twister");
 
 --- Performance Results ---
-Pair 1 (Node 21 -> 23): Tx=401, Rx=364, PDR=90.77%
-Pair 2 (Node 22 -> 24): Tx=401, Rx=368, PDR=91.77%
+Pair 1 (Node 21 -> 23): Tx=401, Rx=362, PDR=90.27%
+Pair 2 (Node 22 -> 24): Tx=401, Rx=362, PDR=90.27%
 
 OVERALL RESULTS:
-Aggregate Packet Delivery Ratio (PDR): 91.27 %
-Average End-to-End Latency: 0.1153 seconds
+Aggregate Packet Delivery Ratio (PDR): 90.27 %
 
 rng(5, "twister");
 
