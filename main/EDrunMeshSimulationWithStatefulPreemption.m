@@ -29,10 +29,12 @@ NET_TRANSMISSIONS = 2;
 NET_TRANSMIT_INTERVAL = 30e-3;  % seconds between replicas
 
 % Custom Relay Strategy Settings
-% 0 = Without Preemption, 2 = Stateless Preemption, 2 = Stateful Preemption
+% 0 = Without Preemption, 1 = Stateless Preemption, 2 = Stateful Preemption
 RELAY_STRATEGY = 2;             
-ADV_MIN_GAP = 1;                % Minimum T_ChPDU gap in ms
-ADV_MAX_GAP = 10;               % Maximum T_ChPDU gap in ms            
+ADV_MIN_GAP = 1;                 % Minimum T_ChPDU gap in ms
+ADV_MAX_GAP = 10;                % Maximum T_ChPDU gap in ms
+ENABLE_PREEMPTION_LOG = false;   % Log Suspended/Resumed
+ENABLE_ADV_EVENT_LOG  = false;   % Log T_ChPDU / timing ADV            
 strategyNames = ["Without Preemption", "Stateless Preemption", "Stateful Preemption"];
 
 fprintf('\n======================================================\n');
@@ -90,7 +92,9 @@ for i = 1:numTotalNodes
         RandomAdvertising = true, ...
         RelayStrategy = RELAY_STRATEGY, ...
         RandomAdvMinGap = ADV_MIN_GAP, ...
-        RandomAdvMaxGap = ADV_MAX_GAP); 
+        RandomAdvMaxGap = ADV_MAX_GAP, ...
+        EnablePreemptionLog = ENABLE_PREEMPTION_LOG, ...
+        EnableAdvEventLog = ENABLE_ADV_EVENT_LOG); 
 end
 
 %% 5. Basic Network Visualization
@@ -137,10 +141,12 @@ dstIDs = [23, 24];
 
 for p = 1:numel(srcIDs)
     % Traffic logic:
-    % PacketSize is 15 bytes (120 bits). Setting DataRate to 120 bps
-    % aims to generate exactly 1 packet every second.
-    % OnTime = 0.001s forces the immediate generation of the first packet.
-    % OffTime = 0.999s keeps the node idle, completing the 1.0 second cycle.
+    % PacketSize is 15 bytes = 120 bits. In networkTrafficOnOff the DataRate
+    % is expressed in kb/s, so DataRate = 120 means 120 kb/s.
+    % During OnTime = 0.001 s the source generates 120 kb/s * 0.001 s = 120 bits
+    % = exactly one 15-byte packet.
+    % OffTime = 0.999 s keeps the node idle, completing the 1.0 s cycle,
+    % which yields exactly 1 packet per second per source.
     
     traffic = networkTrafficOnOff(...
         DataRate = 120, ...           
@@ -161,7 +167,7 @@ addNodes(simulator, nodes);
 run(simulator, SIM_TIME);
 fprintf('[%s] Simulation complete.\n', string(datetime('now', 'Format', 'HH:mm:ss')));
 
-%% 7. Post-Simulation Analysis (PDR and Latency)
+%% 8. Post-Simulation Analysis (PDR and Latency)
 fprintf('\n--- Performance Results ---\n');
 
 totalTx = 0;

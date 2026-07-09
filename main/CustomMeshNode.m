@@ -15,6 +15,8 @@ classdef CustomMeshNode < bluetoothLENode
         RelayStrategy (1,1) double {mustBeMember(RelayStrategy, [0, 1, 2])} = 0
         RandomAdvMinGap (1,1) double {mustBeNonnegative} = 1
         RandomAdvMaxGap (1,1) double {mustBeNonnegative} = 10
+        EnablePreemptionLog (1,1) logical = false
+        EnableAdvEventLog   (1,1) logical = false
     end
 
     methods
@@ -41,7 +43,9 @@ classdef CustomMeshNode < bluetoothLENode
                         'Role', currentNode.Role, ...
                         'RelayStrategy', currentNode.RelayStrategy, ...
                         'RandomAdvMinGap', currentNode.RandomAdvMinGap, ...
-                        'RandomAdvMaxGap', currentNode.RandomAdvMaxGap);
+                        'RandomAdvMaxGap', currentNode.RandomAdvMaxGap, ...
+                        'EnablePreemptionLog', currentNode.EnablePreemptionLog, ...
+                        'EnableAdvEventLog', currentNode.EnableAdvEventLog);
                     
                     % Overwrite the protected property of the superclass
                     currentNode.pLinkLayer = customBearer;
