@@ -25,12 +25,27 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
         
         % Maximum gap for random advertising in milliseconds. Default: 10 ms.
         RandomAdvMaxGap (1,1) double {mustBeNonnegative} = 10
+        
+        % Toggle for Stateful Preemption logs (Saved/Restored channels and timers)
+        EnablePreemptionLog (1,1) logical = false
+        
+        % Toggle for Advertising Event logs (T_ChPDU gaps and timing)
+        EnableAdvEventLog (1,1) logical = false
     end
 
     properties (Access = protected)
         TRSI = 0                % Remaining Scan Interval time in microseconds
         SavedChannelIndex = -1  % Index of the channel where scanning was interrupted
         SavedChannelCounter = 1 % Index of the channel selection counter
+        SavedChannelList = []   % Snapshot of the advertising channel rotation
+                                % (pAdvertisingChannelList) at the moment of the
+                                % interruption. Needed because, when
+                                % RandomAdvertising is enabled, the base class
+                                % re-shuffles the channel list at every ADV
+                                % event: restoring the counter alone would make
+                                % it index a different (re-shuffled) list,
+                                % breaking the original scan rotation described
+                                % in Fig. 5 of the paper.
     end
 
     methods
@@ -61,6 +76,20 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
                     
                     % Store the channel selection counter
                     obj.SavedChannelCounter = obj.pChannelSelectionCounter;
+                    
+                    % Store the current channel rotation list. The upcoming ADV
+                    % event may re-shuffle pAdvertisingChannelList (when
+                    % RandomAdvertising is enabled), so the full list must be
+                    % restored together with the counter to preserve the
+                    % original scanning sequence across the interruption.
+                    obj.SavedChannelList = obj.pAdvertisingChannelList;
+                    
+                    % Log for the stored state
+                    if obj.EnablePreemptionLog
+                        fprintf('[Preemption] %.2f ms | Suspended | TRSI: %.2f ms | Channel Index: %d | Rotation: [%s]\n', ...
+                            obj.LastRunTime/1000, obj.TRSI/1000, obj.SavedChannelIndex, ...
+                            strjoin(string(obj.SavedChannelList(:).'), ' '));
+                    end
                 end
             end
             
@@ -70,11 +99,19 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
 
         % 2. OVERRIDE SWITCHTOSCANNING: Restore the interrupted state
         function switchToScanning(obj)
-            % Execute the standard setup (resets timer and advances channel)
+            % Execute the standard setup (resets timer, advances channel, and
+            % possibly uses a re-shuffled channel list)
             switchToScanning@ble.internal.linkLayerGAPBearer(obj);
             
             % Apply the restoration ONLY for Stateful Preemption (2)
             if obj.RelayStrategy == 2 && obj.TRSI > 0
+                % Revert to the channel rotation that was active when scanning
+                % was interrupted, so that the subsequent Scan Windows follow
+                % the original channel sequence (e.g., resume on 38, then 39)
+                if ~isempty(obj.SavedChannelList)
+                    obj.pAdvertisingChannelList = obj.SavedChannelList;
+                end
+                
                 % Revert to the channel where scanning was interrupted
                 obj.pChannelIndex = obj.SavedChannelIndex;
                 
@@ -92,15 +129,20 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
                     obj.pNextInvokeTime = obj.pNextEventTime;
                 end
                 
+                % Log for the restored state
+                if obj.EnablePreemptionLog
+                    fprintf('[Preemption] %.2f ms |  Resumed  | Active Scan Time: %.2f ms | Channel Index: %d | Rotation: [%s]\n', ...
+                        obj.LastRunTime/1000, (obj.pNextEventTime - obj.LastRunTime)/1000, obj.pChannelIndex, ...
+                        strjoin(string(obj.pAdvertisingChannelList(:).'), ' '));
+                end
+                
                 % Reset state memory for the next full Scan Interval cycle
                 obj.TRSI = 0;
+                obj.SavedChannelList = [];
             end
         end
 
         % 3. OVERRIDE GETRANDOMADVERTISINGINSTANCES
-        % Uses the configurable RandomAdvMinGap and RandomAdvMaxGap properties.
-        % Includes a safety fallback to default values if input data is invalid,
-        % and boundary checks to prevent randi() crashes during high delays.
         function advInstances = getRandomAdvertisingInstances(obj)
             advInstances = zeros(1,3);
             
@@ -110,6 +152,9 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
             
             % Default to [1, 10] ms if values are invalid
             if isempty(minGapMs) || isempty(maxGapMs) || minGapMs <= 0 || minGapMs >= maxGapMs
+                warning('ConfigurableGAPBearer:InvalidAdvGaps', ...
+                    'Invalid RandomAdvMinGap/RandomAdvMaxGap values (%g, %g). Falling back to [1, 10] ms.', ...
+                    minGapMs, maxGapMs);
                 minGapMs = 1;
                 maxGapMs = 10;
             end
@@ -142,6 +187,15 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
             end
             
             advInstances(3) = randi([minThird, maxThird]);
+            
+            % Log for the advertising event timings
+            if obj.EnableAdvEventLog
+                fprintf('[AdvEvent]   Start: %.2f ms | T_ChPDU1: %.2f ms | T_ChPDU2: %.2f ms | End: %.2f ms\n', ...
+                    advInstances(1)/1000, ...
+                    (advInstances(2) - advInstances(1))/1000, ...
+                    (advInstances(3) - advInstances(2))/1000, ...
+                    advInstances(3)/1000);
+            end
         end
     end
 end

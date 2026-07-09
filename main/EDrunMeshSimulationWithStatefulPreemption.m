@@ -1,3 +1,4 @@
+%% 
 %% BLE Mesh Performance Simulation - Stateful Preemption Evaluation
 % This script replicates the experimental setup from the paper:
 % Belli et al., "Relaying Mechanisms in BLE Mesh Networks: A Method for Improving Latency and Reliability,"
@@ -28,7 +29,7 @@ NET_TRANSMISSIONS = 2;
 NET_TRANSMIT_INTERVAL = 30e-3;  % seconds between replicas
 
 % Custom Relay Strategy Settings
-% 0 = Without Preemption, 1 = Stateless Preemption, 2 = Stateful Preemption
+% 0 = Without Preemption, 2 = Stateless Preemption, 2 = Stateful Preemption
 RELAY_STRATEGY = 2;             
 ADV_MIN_GAP = 1;                % Minimum T_ChPDU gap in ms
 ADV_MAX_GAP = 10;               % Maximum T_ChPDU gap in ms            
