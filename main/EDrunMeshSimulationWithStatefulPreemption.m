@@ -21,7 +21,6 @@ SOURCE_RATE = 1;                % packets per second
 TOTAL_PACKETS = 400;            % Number of messages per source
 SIM_TIME = 400;                 % Simulation duration in seconds
 SCAN_INTERVAL = 0.01;           % T_si (10 ms, adjustable up to 200 ms)
-SCAN_WINDOW = SCAN_INTERVAL;    % Scan Window = Scan Interval
 RECEPTION_RANGE = 9;            % Range in meters
 
 % Network Transmissions (1 original + 1 replica)
