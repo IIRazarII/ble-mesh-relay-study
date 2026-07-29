@@ -9,7 +9,7 @@ MATLAB implementation of the three relaying mechanisms described in:
 
 As of the R2025b release, the MATLAB Bluetooth Toolbox natively supports only
 two of the three mechanisms: relaying without preemption, and stateless
-preemption through the undocumented `PreemptiveScanning` property. Stateful
+preemption through the `PreemptiveScanning` property. Stateful
 preemption is not available. This repository adds it by subclassing the toolbox
 link layer, together with a configurable `T_ChPDU` range so that the advertising
 inter-PDU separation can be set to the 1–10 ms interval used in the paper
