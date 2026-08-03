@@ -19,7 +19,7 @@ PACKET_SIZE = 15;               % Application layer payload size in bytes
 TTL_VALUE = 127;                % Time-To-Live for network PDUs
 SOURCE_RATE = 1;                % packets per second
 TOTAL_PACKETS = 400;            % Number of messages per source
-SIM_TIME = 400;                 % Simulation duration in seconds
+SIM_TIME = 399.5;                 % Simulation duration in seconds
 SCAN_INTERVAL = 0.01;           % T_si (10 ms, adjustable up to 200 ms)
 RECEPTION_RANGE = 9;            % Range in meters
 
