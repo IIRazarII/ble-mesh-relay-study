@@ -6,11 +6,14 @@
 %
 % All parameters are tuned to match "Experiment D" (Grid Topology).
 %
+% Requires ConfigurableGAPBearer.m and CustomMeshNode.m on the path.
+%
 % Note: This script has only been verified to work with MATLAB R2025b.
 
 clear; clc; close all;
 
 % Set the seed to ensure stable and reproducible results
+rng(1, "twister");
 
 %% 1. Simulation Constants (from Paper Table I & II)
 NODES_DISTANCE = 8;             % Distance between grid nodes in meters
@@ -18,8 +21,7 @@ PACKET_SIZE = 15;               % Application layer payload size in bytes
 TTL_VALUE = 127;                % Time-To-Live for network PDUs
 SOURCE_RATE = 1;                % packets per second
 TOTAL_PACKETS = 400;            % Number of messages per source
-SIM_TIME = 400;                 % Simulation duration in seconds
-SIM_TIME = 399.5;               % Simulation duration in seconds
+SIM_TIME = 399.5;                 % Simulation duration in seconds
 SCAN_INTERVAL = 0.01;           % T_si (10 ms, adjustable up to 200 ms)
 RECEPTION_RANGE = 9;            % Range in meters
 
@@ -37,7 +39,7 @@ ENABLE_ADV_EVENT_LOG  = false;   % Log T_ChPDU / timing ADV
 strategyNames = ["Without Preemption", "Stateless Preemption", "Stateful Preemption"];
 
 fprintf('\n======================================================\n');
-fprintf('   BLE Mesh Simulation (Experiment D) Initialized\n');
+fprintf('   BLE Mesh Simulation Initialized\n');
 fprintf('======================================================\n');
 fprintf(' Relay Strategy : %s\n', strategyNames(RELAY_STRATEGY + 1));
 fprintf(' Scan Interval  : %.2f ms\n', SCAN_INTERVAL * 1000);
