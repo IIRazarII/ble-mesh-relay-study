@@ -62,7 +62,7 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
 
     methods (Access = protected)
         
-        % 1. OVERRIDE SCANNING: Save state before interrupting for Advertising
+        % OVERRIDE SCANNING: Save state before interrupting for Advertising.
         function scanning(obj, elapsedTime, rxLLPacket)
             % Apply the saving logic ONLY for Stateful Preemption (2)
             if obj.RelayStrategy == 2
@@ -97,7 +97,7 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
             scanning@ble.internal.linkLayerGAPBearer(obj, elapsedTime, rxLLPacket);
         end
 
-        % 2. OVERRIDE SWITCHTOSCANNING: Restore the interrupted state
+        % OVERRIDE SWITCHTOSCANNING: Restore the interrupted state.
         function switchToScanning(obj)
             % Execute the standard setup (resets timer, advances channel, and
             % possibly uses a re-shuffled channel list)
@@ -142,7 +142,7 @@ classdef ConfigurableGAPBearer < ble.internal.linkLayerGAPBearer
             end
         end
 
-        % 3. OVERRIDE GETRANDOMADVERTISINGINSTANCES
+        % OVERRIDE GETRANDOMADVERTISINGINSTANCES: Allow configuration of random advertising gaps.
         function advInstances = getRandomAdvertisingInstances(obj)
             advInstances = zeros(1,3);
             

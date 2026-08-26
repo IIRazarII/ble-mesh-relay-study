@@ -1,9 +1,10 @@
 function [summary, raw] = runPreemptionCampaign(opts)
-%%
-%% BLE Mesh Performance Simulation
+% BLE Mesh Performance Simulation - Scan Interval Campaign
+%
 % This function evaluates the three relaying strategies described in:
-% Belli et al., "Relaying Mechanisms in BLE Mesh Networks: A Method for Improving Latency and Reliability,"
-% IEEE Internet of Things Journal, 2025. DOI: 10.1109/JIOT.2025.3550831
+% Belli et al., "Relaying Mechanisms in BLE Mesh Networks: A Method for
+% Improving Latency and Reliability," IEEE Internet of Things Journal,
+% 2025. DOI: 10.1109/JIOT.2025.3550831
 %
 % Every simulation parameter is exposed as a name-value argument.
 % Calling the function with no arguments reproduces the reference protocol
@@ -22,21 +23,25 @@ function [summary, raw] = runPreemptionCampaign(opts)
 %
 % Note: This script has only been verified to work with MATLAB R2025b.
 %
-%% ------------------------------------------------------------------ %%
-% CAMPAIGN
+% --- CAMPAIGN ------------------------------------------------------------
 %   Strategies              Relaying strategies to evaluate: 0/1/2
 %   ScanIntervals           Scan Interval values to sweep, in seconds
 %   Seeds                   One independent replication per seed
 %   RandomStream            Generator used by rng inside each worker
 %   UseParallel             Run the replications on a local pool
 %   NumWorkers              Pool size; 0 uses the profile default
+%   PlotTopology            Draw the network map. The topology is fixed for
+%                           the whole campaign, so it is drawn once, before
+%                           the sweep starts
 %   Plot / ShowCI           Draw the paper-style figure, with 95% error bars
 %   PlotTitle               Custom figure title ("" keeps the default)
+%   PlotFromOrigin          Anchor every curve at (0 ms, 0), as in the
+%                           reference figures
 %   SaveResults             Checkpoint to disk after every configuration
 %   ResultFile              Destination .mat file
 %   Verbose                 Print the campaign header and progress lines
 %
-% TRAFFIC
+% --- TRAFFIC -------------------------------------------------------------
 %   PacketsPerSource        Application messages per source, per replication
 %   PacketRate              Cycles per second, per source. With the default
 %                           BurstSize = 1 this is the message rate; with
@@ -55,7 +60,7 @@ function [summary, raw] = runPreemptionCampaign(opts)
 %   SimTime                 Explicit run length in seconds; 0 derives it from
 %                           PacketsPerSource, PacketRate and DrainTime
 %
-% MESH PROFILE
+% --- MESH PROFILE --------------------------------------------------------
 %   NetworkTransmissions    Transmissions of a network PDU originated by the
 %                           node: 1 = single transmission, no replica
 %   NetworkTransmitInterval Seconds between those transmissions
@@ -64,61 +69,72 @@ function [summary, raw] = runPreemptionCampaign(opts)
 %   RelayRetransmitInterval Seconds between those transmissions
 %   TTL                     Time-To-Live of the network PDUs
 %
-% RADIO AND LINK LAYER
+% --- RADIO AND LINK LAYER ------------------------------------------------
 %   AdvertisingInterval     Advertising interval, in seconds
 %   RandomAdvertising       Randomise the advertising channel rotation
 %   AdvMinGap / AdvMaxGap   T_ChPDU bounds, in milliseconds
 %   ReceiverRange           Coverage range, in meters
 %   TransmitterPower        Transmit power, in dBm
 %
-% TOPOLOGY
+% --- TOPOLOGY ------------------------------------------------------------
 %   GridRows / GridCols     Relay grid shape
 %   NodesDistance           Grid spacing, in meters
 %   SourcePositions         N-by-2 source coordinates
 %   DestPositions           N-by-2 destination coordinates, paired by row
 %                           with SourcePositions
 %
-% LOGGING
-%   EnablePreemptionLog     Per-node preemption logs (costly, interleaved
-%   EnableAdvEventLog       across workers: use with UseParallel = false)
+% --- LOGGING -------------------------------------------------------------
+%   EnablePreemptionLog     Print Suspended/Resumed events of every node.
+%                           Costly, and interleaved across workers: use it
+%                           with UseParallel = false
+%   EnableAdvEventLog       Print the T_ChPDU gaps of every advertising
+%                           event. Same caveat as EnablePreemptionLog
 %
-%% ------------------------------------------------------------------ %%
-% Examples:
+% --- OUTPUT --------------------------------------------------------------
+%   summary  Struct with the aggregated table, the paired comparison
+%            table, the figure handles and the configuration
+%   raw      Struct array with one entry per replication, for further
+%            inspection
+%
+% --- EXAMPLES ------------------------------------------------------------
 %   % Reference protocol
 %   [s, raw] = runPreemptionCampaign();
 %
 %   % Reduced campaign
-%   [s, raw] = runPreemptionCampaign(ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ...
-%                                    PacketsPerSource = 100, Seeds = 1:8, NumWorkers = 8);
+%   [s, raw] = runPreemptionCampaign( ...
+%       ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ...
+%       PacketsPerSource = 100, Seeds = 1:8, NumWorkers = 8);
 %
 %   % Reduced campaign with single transmission, no replica
-%   [s, raw] = runPreemptionCampaign(ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ...
-%                                    PacketsPerSource = 100, Seeds = 1:8, NumWorkers = 8, ...
-%                                    NetworkTransmissions = 1);
+%   [s, raw] = runPreemptionCampaign( ...
+%       ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ...
+%       PacketsPerSource = 100, Seeds = 1:8, NumWorkers = 8, ...
+%       NetworkTransmissions = 1);
 %
-%   % Reduced campaign with bursty load: 10 bursts of 10 messages, one per second
-%   [s, raw] = runPreemptionCampaign(ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ... 
-%                                    PacketsPerSource = 100, BurstSize = 10, ...
-%                                    TrafficOnTime = 5e-3, PacketRate = 1, ...
-%                                    SimTime = 12, Seeds = 1:8, NumWorkers = 8);
-%
+%   % Bursty load: 10 bursts of 10 messages, one burst per second
+%   [s, raw] = runPreemptionCampaign( ...
+%       ScanIntervals = [10 20 40 60 100 150 200]*1e-3, ...
+%       PacketsPerSource = 100, BurstSize = 10, TrafficOnTime = 5e-3, ...
+%       PacketRate = 1, SimTime = 12, Seeds = 1:8, NumWorkers = 8);
 
 arguments
-    % --- Campaign --------------------------------------------------------
+    % --- CAMPAIGN --------------------------------------------------------
     opts.Strategies              (1,:) double  {mustBeMember(opts.Strategies, [0 1 2])} = [0 1 2]
     opts.ScanIntervals           (1,:) double  {mustBePositive} = (10:10:200)*1e-3
     opts.Seeds                   (1,:) double  = 1:12
     opts.RandomStream            (1,1) string  = "twister"
     opts.UseParallel             (1,1) logical = true
     opts.NumWorkers              (1,1) double  {mustBeNonnegative} = 12
+    opts.PlotTopology            (1,1) logical = true
     opts.Plot                    (1,1) logical = true
     opts.ShowCI                  (1,1) logical = true
     opts.PlotTitle               (1,1) string  = ""
+    opts.PlotFromOrigin          (1,1) logical = true
     opts.SaveResults             (1,1) logical = true
     opts.ResultFile              (1,1) string  = "preemption_campaign.mat"
     opts.Verbose                 (1,1) logical = true
 
-    % --- Traffic ---------------------------------------------------------
+    % --- TRAFFIC ---------------------------------------------------------
     opts.PacketsPerSource        (1,1) double  {mustBePositive} = 400
     opts.PacketRate              (1,1) double  {mustBePositive} = 1
     opts.PacketSize              (1,1) double  {mustBePositive} = 15
@@ -127,7 +143,7 @@ arguments
     opts.DrainTime               (1,1) double  {mustBeNonnegative} = 0
     opts.SimTime                 (1,1) double  {mustBeNonnegative} = 0
 
-    % --- Mesh profile ----------------------------------------------------
+    % --- MESH PROFILE ----------------------------------------------------
     opts.NetworkTransmissions    (1,1) double  {mustBePositive} = 2
     opts.NetworkTransmitInterval (1,1) double  {mustBePositive} = 30e-3
     opts.RelayEnabled            (1,1) logical = true
@@ -135,7 +151,7 @@ arguments
     opts.RelayRetransmitInterval (1,1) double  {mustBePositive} = 10e-3
     opts.TTL                     (1,1) double  {mustBePositive} = 127
 
-    % --- Radio and link layer --------------------------------------------
+    % --- RADIO AND LINK LAYER --------------------------------------------
     opts.AdvertisingInterval     (1,1) double  {mustBePositive} = 20e-3
     opts.RandomAdvertising       (1,1) logical = true
     opts.AdvMinGap               (1,1) double  {mustBePositive} = 1
@@ -143,19 +159,19 @@ arguments
     opts.ReceiverRange           (1,1) double  {mustBePositive} = 9
     opts.TransmitterPower        (1,1) double  = 20
 
-    % --- Topology --------------------------------------------------------
+    % --- TOPOLOGY --------------------------------------------------------
     opts.GridRows                (1,1) double  {mustBeInteger, mustBePositive} = 4
     opts.GridCols                (1,1) double  {mustBeInteger, mustBePositive} = 5
     opts.NodesDistance           (1,1) double  {mustBePositive} = 8
     opts.SourcePositions         (:,2) double  = [0 20; 32 4]
     opts.DestPositions           (:,2) double  = [0 4; 32 20]
 
-    % --- Logging ---------------------------------------------------------
+    % --- LOGGING ---------------------------------------------------------
     opts.EnablePreemptionLog     (1,1) logical = false
     opts.EnableAdvEventLog       (1,1) logical = false
 end
 
-%% 0. Cross-Parameter Validation and Derived Quantities
+%% 1. CROSS-PARAMETER VALIDATION AND DERIVED QUANTITIES
 if size(opts.SourcePositions, 1) ~= size(opts.DestPositions, 1)
     error('runPreemptionCampaign:PairMismatch', ...
         'SourcePositions and DestPositions must have the same number of rows (%d vs %d).', ...
@@ -170,7 +186,7 @@ end
 
 % The generator emits BurstSize messages per On-Off cycle, so PacketRate is
 % the rate of the cycles: with the default BurstSize = 1 it is the message
-% rate, and with BurstSize > 1 it is the burst rate
+% rate, and with BurstSize > 1 it is the burst rate.
 period = 1 / opts.PacketRate;
 
 if mod(opts.PacketsPerSource, opts.BurstSize) ~= 0
@@ -190,7 +206,7 @@ end
 % The data rate is chosen so that the On period carries exactly BurstSize
 % packets of PacketSize bytes: the generator spaces them by the time needed
 % to transmit one packet, so BurstSize of them fill TrafficOnTime exactly.
-% DataRate is expressed in kb/s by networkTrafficOnOff
+% DataRate is expressed in kb/s by networkTrafficOnOff.
 dataRate = (opts.BurstSize * opts.PacketSize * 8) / (opts.TrafficOnTime * 1000);
 
 % The traffic generator fires at t = 0, T, 2T, ... so a run of length L
@@ -198,10 +214,10 @@ dataRate = (opts.BurstSize * opts.PacketSize * 8) / (opts.TrafficOnTime * 1000);
 % end caps the count at exactly PacketsPerSource and, at the same time,
 % leaves room for the last message to complete its multi-hop path: without
 % it that message would be counted as transmitted but never as received,
-% depressing the PDR by 1/PacketsPerSource
+% depressing the PDR by 1/PacketsPerSource.
 drainTime = opts.DrainTime;
 if drainTime == 0
-    drainTime = period / 2;      % Reference behaviour: half a packet period
+    drainTime = period / 2;  % Reference behaviour: half a packet period
 end
 
 if drainTime > period
@@ -211,7 +227,7 @@ if drainTime > period
 end
 
 if opts.SimTime > 0
-    simTime = opts.SimTime;      % Explicit override: the message count follows
+    simTime = opts.SimTime;  % Explicit override: the message count follows
 else
     simTime = nBursts * period - drainTime;
 end
@@ -224,7 +240,7 @@ end
 
 % Messages actually generated per source, given the resulting run length. A
 % burst that starts before the end of the run is counted in full, since its
-% On period is short compared with the cycle
+% On period is short compared with the cycle.
 msgPerSource = (floor(simTime / period) + 1) * opts.BurstSize;
 
 if opts.AdvertisingInterval <= opts.AdvMaxGap * 1e-3
@@ -240,7 +256,7 @@ nConfig = numel(opts.Strategies) * numel(opts.ScanIntervals);
 
 % Everything a single replication needs is packed into one struct: parfor
 % broadcasts it as a whole, whereas individual fields of a captured struct
-% (opts.Foo) would not be accepted inside the loop body
+% (opts.Foo) would not be accepted inside the loop body.
 cfg = struct( ...
     'PacketSize',              opts.PacketSize, ...
     'DataRate',                dataRate, ...
@@ -268,7 +284,7 @@ cfg = struct( ...
     'EnablePreemptionLog',     opts.EnablePreemptionLog, ...
     'EnableAdvEventLog',       opts.EnableAdvEventLog);
 
-%% 1. Parallel Pool Setup
+%% 2. PARALLEL POOL SETUP
 % Replications are independent, so each one can run on its own worker.
 % Workers are separate processes: the wirelessNetworkSimulator singleton
 % therefore does not conflict across concurrent simulations.
@@ -286,7 +302,7 @@ if opts.UseParallel
     pool = gcp('nocreate');
 
     % An existing pool of the wrong size is discarded, since its size cannot
-    % be changed once created
+    % be changed once created.
     if opts.NumWorkers > 0 && ~isempty(pool) && pool.NumWorkers ~= opts.NumWorkers
         delete(pool);
         pool = [];
@@ -295,7 +311,7 @@ if opts.UseParallel
     if isempty(pool)
         if opts.NumWorkers > 0
             % The local profile may cap the worker count below the requested
-            % value, in which case the profile default is used instead
+            % value, in which case the profile default is used instead.
             try
                 pool = parpool('Processes', opts.NumWorkers);
             catch poolErr
@@ -309,12 +325,12 @@ if opts.UseParallel
         end
     end
 
-    % The custom classes must be visible to the workers.
-    % Alternative: pctRunOnAll addpath('/path/to/folder')
+    % The custom classes must be visible to the workers. An alternative
+    % is pctRunOnAll addpath('/path/to/folder').
     addAttachedFiles(pool, {'ConfigurableGAPBearer.m', 'CustomMeshNode.m'});
     nWorkers = pool.NumWorkers;
 else
-    nWorkers = 0;   % With 0 workers parfor degenerates into a serial for
+    nWorkers = 0;  % With 0 workers parfor degenerates into a serial for
 end
 
 if opts.Verbose
@@ -345,12 +361,34 @@ if opts.Verbose
     fprintf('======================================================\n\n');
 end
 
+%% 3. NETWORK TOPOLOGY MAP
+% The topology does not change across strategies, Scan Intervals or seeds,
+% so the map is drawn once here rather than inside runSingle: that function
+% executes on the workers, where a figure would be created in an invisible
+% process and lost. Drawing it before the sweep also lets the layout be
+% checked while the campaign is still running.
+topologyFigure = gobjects(0);
+
+if opts.PlotTopology
+    if opts.Verbose
+        fprintf('Drawing the network topology map...\n');
+    end
+
+    % Same lattice as the one built by runSingle, kept in step with it
+    [Xtopo, Ytopo] = meshgrid( ...
+        0:opts.NodesDistance:(opts.GridCols-1)*opts.NodesDistance, ...
+        0:opts.NodesDistance:(opts.GridRows-1)*opts.NodesDistance);
+
+    topologyFigure = plotTopology([Xtopo(:), Ytopo(:)], opts.SourcePositions, ...
+        opts.DestPositions, opts.NodesDistance, opts.ReceiverRange);
+end
+
 raw = struct('Strategy', {}, 'ScanInterval', {}, 'Seed', {}, ...
              'PDR', {}, 'Latency', {}, 'Tx', {}, 'Rx', {}, ...
              'TxPair', {}, 'RxPair', {}, 'LatPair', {}, ...
              'SrcIDs', {}, 'DstIDs', {}, 'Elapsed', {});
 
-%% 2. Run the Campaign
+%% 4. RUN THE CAMPAIGN
 % The loops over strategy and Scan Interval are kept serial so that partial
 % results can be checkpointed to disk: an interrupted sweep is not lost.
 tCampaign = tic;
@@ -359,7 +397,7 @@ iConfig = 0;
 for s = 1:numel(opts.Strategies)
     for c = 1:numel(opts.ScanIntervals)
         % Local copies: parfor requires sliced or broadcast variables, not
-        % fields of a struct captured from the enclosing scope
+        % fields of a struct captured from the enclosing scope.
         strat = opts.Strategies(s);
         scanI = opts.ScanIntervals(c);
         seeds = opts.Seeds;
@@ -404,16 +442,22 @@ if opts.Verbose
     fprintf('\nCampaign completed in %.1f min.\n', toc(tCampaign)/60);
 end
 
-%% 3. Post-Campaign Analysis (PDR and Latency)
+%% 5. POST-CAMPAIGN ANALYSIS (PDR AND LATENCY)
 summary = summarize(raw, opts.Strategies, opts.ScanIntervals, strategyNames);
 summary.config = opts;
+
+% The handle is kept separate from summary.figure, which holds the PDR and
+% latency plot produced at the end of this function.
+if ~isempty(topologyFigure)
+    summary.topologyFigure = topologyFigure;
+end
 
 if opts.SaveResults
     save(opts.ResultFile, 'raw', 'summary', 'opts');
 end
 
 % The per-pair breakdown is only printed for single-point campaigns: over a
-% full sweep it would produce one block per configuration and bury the trend
+% full sweep it would produce one block per configuration and bury the trend.
 if opts.Verbose && isscalar(opts.ScanIntervals)
     printPairBreakdown(raw, opts.Strategies, strategyNames);
 end
@@ -430,12 +474,13 @@ end
 
 if opts.Plot
     summary.figure = plotCampaign(summary, opts.Strategies, ...
-        opts.ScanIntervals, strategyNames, opts.ShowCI, nPairs, opts.PlotTitle);
+        opts.ScanIntervals, strategyNames, opts.ShowCI, opts.ReceiverRange, ...
+        opts.PlotTitle, opts.PlotFromOrigin);
 end
 end
 
-%% =======================================================================
-function fig = plotCampaign(summary, strategies, scanIntervals, names, showCI, nPairs, customTitle)
+%% ========================================================================
+function fig = plotCampaign(summary, strategies, scanIntervals, names, showCI, receiverRange, customTitle, fromOrigin)
 % Draws PDR and end-to-end latency against the Scan Interval, following the
 % layout of Figs. 11 and 17 of the reference paper: PDR in blue on the left
 % axis, latency in red on the right axis, and one line style per relaying
@@ -445,15 +490,23 @@ function fig = plotCampaign(summary, strategies, scanIntervals, names, showCI, n
 % interval over the replications.
 
 fig = figure('Name', 'BLE Mesh: PDR and Latency vs Scan Interval', ...
-             'Position', [100, 100, 800, 520]);
-styles = {'-', '--', ':'};
+             'Color', 'w', 'Position', [200, 200, 650, 450]);
+
+% Line styles and widths of the reference figures, indexed by strategy
+styles  = {'-', '--', ':'};
+widths  = [1.5, 1.2, 1.5];
+legendNames = ["Without Preemption", "With Stateless Preemption", ...
+               "With Stateful Preemption"];
+
+T      = summary.table;
 tsiMs  = scanIntervals * 1000;
-T = summary.table;
-handles = gobjects(1, numel(strategies));
+xMax   = max(tsiMs);
+latMax = 0;
+hLeg   = gobjects(1, numel(strategies));
 
 hold on;
 
-% --- Left axis: PDR ------------------------------------------------------
+% --- LEFT AXIS: PDR ------------------------------------------------------
 yyaxis left
 for s = 1:numel(strategies)
     m = T.Strategy == names(strategies(s)+1);
@@ -461,20 +514,23 @@ for s = 1:numel(strategies)
     y  = T.MeanPDR(m);   y  = y(ord);
     ci = T.PDR_CI95(m);  ci = ci(ord);
 
-    st = styles{mod(strategies(s), numel(styles)) + 1};
+    % The reference curves start at the origin, where no packet is delivered
+    if fromOrigin
+        x = [0; x]; y = [0; y]; ci = [0; ci];
+    end
+
+    k = mod(strategies(s), numel(styles)) + 1;
     if showCI
-        handles(s) = errorbar(x, y, ci, 'Color', 'b', 'LineStyle', st, ...
-            'Marker', 'o', 'MarkerSize', 4, 'LineWidth', 1.2, ...
-            'DisplayName', names(strategies(s)+1));
+        plotSeries(x, y, ci, 'b', styles{k}, widths(k));
     else
-        handles(s) = plot(x, y, 'Color', 'b', 'LineStyle', st, ...
-            'LineWidth', 1.2, 'DisplayName', names(strategies(s)+1));
+        plotSeries(x, y, [], 'b', styles{k}, widths(k));
     end
 end
 ylabel('PDR (%)', 'Interpreter', 'none');
 ylim([0, 100]);
+yticks(0:10:100);
 
-% --- Right axis: latency -------------------------------------------------
+% --- RIGHT AXIS: LATENCY -------------------------------------------------
 yyaxis right
 for s = 1:numel(strategies)
     m = T.Strategy == names(strategies(s)+1);
@@ -482,47 +538,67 @@ for s = 1:numel(strategies)
     y  = T.MeanLatency_ms(m)  / 1000;   y  = y(ord);
     ci = T.Latency_CI95_ms(m) / 1000;   ci = ci(ord);
 
-    st = styles{mod(strategies(s), numel(styles)) + 1};
-    if showCI
-        errorbar(x, y, ci, 'Color', 'r', 'LineStyle', st, ...
-            'Marker', 's', 'MarkerSize', 4, 'LineWidth', 1.2, ...
-            'HandleVisibility', 'off');
-    else
-        plot(x, y, 'Color', 'r', 'LineStyle', st, 'LineWidth', 1.2, ...
-            'HandleVisibility', 'off');
+    if fromOrigin
+        x = [0; x]; y = [0; y]; ci = [0; ci];
     end
-end
-ylabel('Latency (s)', 'Interpreter', 'none');
+    latMax = max([latMax; y(:) + max(ci(:), 0)], [], 'omitnan');
 
-% --- Cosmetics -----------------------------------------------------------
+    k = mod(strategies(s), numel(styles)) + 1;
+    if showCI
+        plotSeries(x, y, ci, 'r', styles{k}, widths(k));
+    else
+        plotSeries(x, y, [], 'r', styles{k}, widths(k));
+    end
+
+    hLeg(s) = plot(nan, nan, 'Color', 'k', 'LineStyle', styles{k}, ...
+        'LineWidth', widths(k));
+end
+
+% The 2 s span of the reference figures is kept unless the data exceed it
+yTop = max(2, ceil(latMax / 0.2) * 0.2);
+ylabel('Latency (s)', 'Interpreter', 'none');
+ylim([0, yTop]);
+yticks(0:0.2:yTop);
+
+% --- COSMETICS -----------------------------------------------------------
 ax = gca;
 ax.YAxis(1).Color = 'b';
 ax.YAxis(2).Color = 'r';
-xlabel('Scan Interval (ms)', 'Interpreter', 'none');
-xlim([0, max(tsiMs) * 1.05]);
-xticks(tsiMs);
+xlabel('ScanInterval (ms)', 'Interpreter', 'none');
+xlim([0, xMax]);
+xticks(unique(round(linspace(0, xMax, 11), 4)));
 grid on;
 
-% Only the PDR lines carry a DisplayName, so the legend shows one entry per
-% strategy rather than duplicating each of them across the two axes
-legend(handles, 'Location', 'southeast', 'Interpreter', 'none');
+legend(hLeg, legendNames(strategies+1), 'Location', 'southeast', ...
+    'FontSize', 8, 'Interpreter', 'none');
 
 if strlength(customTitle) > 0
     title(customTitle, 'Interpreter', 'none');
 else
-    title('PDR (blue) and Latency (red) vs Scan Interval', 'Interpreter', 'none');
+    title(sprintf('Grid topology (Coverage range: %g m)', receiverRange), ...
+        'Interpreter', 'none');
 end
 
-% Packets are counted over every source of a configuration, so the per-source
-% figure divides by the number of replications and by the number of pairs
-subtitle(sprintf('%d replications per point, %d messages per source, mean with 95%% CI', ...
-    max(T.Replications), round(max(T.Packets) / max(T.Replications) / nPairs)), ...
-    'Interpreter', 'none');
 hold off;
 drawnow;
 end
 
-%% =======================================================================
+%% ========================================================================
+function plotSeries(x, y, ci, colour, style, width)
+% One curve of the figure: a plain line, or an errorbar without markers when
+% the confidence interval is requested, so that the look of the reference
+% figures is preserved in both cases.
+
+if isempty(ci) || all(isnan(ci))
+    plot(x, y, 'Color', colour, 'LineStyle', style, 'LineWidth', width, ...
+        'Marker', 'none', 'HandleVisibility', 'off');
+else
+    errorbar(x, y, ci, 'Color', colour, 'LineStyle', style, ...
+        'LineWidth', width, 'Marker', 'none', 'HandleVisibility', 'off');
+end
+end
+
+%% ========================================================================
 function printPairBreakdown(raw, strategies, names)
 % Reports Tx/Rx per source-destination pair, with the counters summed over
 % all replications of each strategy.
@@ -558,7 +634,7 @@ for s = 1:numel(strategies)
 end
 end
 
-%% =======================================================================
+%% ========================================================================
 function out = runSingle(cfg, strategy, seed, scanInterval)
 % Executes a single replication and returns its aggregate metrics. Every
 % scenario parameter travels inside cfg, so the function holds no constant.
@@ -568,7 +644,7 @@ t0 = tic;
 % Seed the generator inside the worker
 rng(seed, char(cfg.RandomStream));
 
-%% 1. Create the Grid Topology
+%% 1. CREATE THE GRID TOPOLOGY
 % Relays occupy a GridRows-by-GridCols lattice; sources and destinations are
 % appended afterwards, so the node IDs are:
 %   1 : numRelays                       -> relays
@@ -586,12 +662,12 @@ numTotalNodes = size(allPositions, 1);
 srcIDs = numRelays + (1:nPairs);
 dstIDs = numRelays + nPairs + (1:nPairs);
 
-%% 2. Initialize Simulator
+%% 2. INITIALIZE SIMULATOR
 % init also resets the singleton, so consecutive replications assigned to
-% the same worker do not inherit nodes from one another
+% the same worker do not inherit nodes from one another.
 simulator = wirelessNetworkSimulator.init;
 
-%% 3. Create and Configure Nodes
+%% 3. CREATE AND CONFIGURE NODES
 nodes = CustomMeshNode.empty(0, numTotalNodes);
 
 for i = 1:numTotalNodes
@@ -603,7 +679,7 @@ for i = 1:numTotalNodes
         TTL = cfg.TTL);
 
     % Enable Relay for the grid nodes. The retransmission parameters only
-    % exist on the object once the Relay feature is turned on
+    % exist on the object once the Relay feature is turned on.
     if cfg.RelayEnabled && i <= numRelays
         meshCfg.Relay = true;
         meshCfg.RelayRetransmissions = cfg.RelayRetransmissions;
@@ -627,11 +703,11 @@ for i = 1:numTotalNodes
         EnableAdvEventLog = cfg.EnableAdvEventLog);
 end
 
-%% 4. Configure Traffic
+%% 4. CONFIGURE TRAFFIC
 % BurstSize packets per On-Off cycle: the data rate was derived by the
 % caller so that OnTime carries exactly that many packets, and OffTime
 % completes the cycle. Raising the rate raises the offered load, which is
-% itself a variable of the experiment and not merely a way to shorten the run
+% itself a variable of the experiment and not merely a way to shorten the run.
 for p = 1:nPairs
     traffic = networkTrafficOnOff( ...
         DataRate = cfg.DataRate, ...
@@ -646,13 +722,13 @@ for p = 1:nPairs
         TTL = cfg.TTL);
 end
 
-%% 5. Run Simulation
+%% 5. RUN SIMULATION
 addNodes(simulator, nodes);
 run(simulator, cfg.SimTime);
 
-%% 6. Collect Metrics
+%% 6. COLLECT METRICS
 % Counters are kept per source-destination pair, not only aggregated, so
-% that the campaign can report the Tx/Rx breakdown of each pair
+% that the campaign can report the Tx/Rx breakdown of each pair.
 txPair  = zeros(1, nPairs);
 rxPair  = zeros(1, nPairs);
 latPair = NaN(1, nPairs);
@@ -673,7 +749,7 @@ end
 out.PDR = 100 * sum(rxPair) / max(sum(txPair), 1);
 
 % The reference work averages the per-pair latency curves arithmetically,
-% so the same convention is used here for comparability with its figures
+% so the same convention is used here for comparability with its figures.
 out.Latency = mean(latPair, 'omitnan');
 
 out.Tx      = sum(txPair);
@@ -686,7 +762,7 @@ out.DstIDs  = dstIDs;
 out.Elapsed = toc(t0);
 end
 
-%% =======================================================================
+%% ========================================================================
 function summary = summarize(raw, strategies, scanIntervals, names)
 % Aggregates the replications into means, 95% confidence intervals and
 % paired differences between strategies, for each Scan Interval.
@@ -723,7 +799,7 @@ summary.table = struct2table(rows);
 % Interval. Note that sharing a seed does not synchronise two strategies:
 % they consume the random stream in different orders, so this pairing
 % removes no variance in practice and the interval is essentially that of
-% two independent samples
+% two independent samples.
 summary.pairedTable = [];
 
 if ismember(0, strategies)
@@ -744,7 +820,7 @@ if ismember(0, strategies)
             end
 
             % Match the replications by seed, in case a configuration has
-            % fewer runs than another
+            % fewer runs than another.
             [~, ia, ib] = intersect([base.Seed], [cur.Seed]);
             dP = [cur(ib).PDR] - [base(ia).PDR];
             dL = ([cur(ib).Latency] - [base(ia).Latency]) * 1000;
@@ -762,7 +838,7 @@ if ismember(0, strategies)
 end
 end
 
-%% =======================================================================
+%% ========================================================================
 function h = ci95(x)
 % Half-width of the 95% confidence interval of the mean (Student's t).
 
@@ -778,7 +854,7 @@ end
 h = tcrit95(n-1) * std(x) / sqrt(n);
 end
 
-%% =======================================================================
+%% ========================================================================
 function t = tcrit95(df)
 % 0.975 quantile of Student's t distribution, tabulated for 1 to 30 degrees
 % of freedom. Avoids a dependency on the Statistics and Machine Learning
@@ -791,6 +867,70 @@ tbl = [12.706 4.303 3.182 2.776 2.571 2.447 2.365 2.306 2.262 2.228 ...
 if df <= numel(tbl)
     t = tbl(df);
 else
-    t = 1.96;   % Normal approximation, adequate beyond 30 replications
+    t = 1.96;  % Normal approximation, adequate beyond 30 replications
+end
+end
+
+%% ========================================================================
+function fig = plotTopology(relayPositions, sourcePos, destPos, spacing, range)
+% Draws the node map: relays as blue dots, sources as green squares and
+% destinations as red triangles, with the source-destination pairs labelled
+% following the node numbering (S1..Sn, then D(n+1)..D(2n)).
+
+nPairs = size(sourcePos, 1);
+allPos = [relayPositions; sourcePos; destPos];
+
+fig = figure('Name', 'BLE Mesh Network Topology', 'Position', [100, 100, 700, 500]);
+hold on; grid on;
+
+scatter(relayPositions(:,1), relayPositions(:,2), 50, 'b', 'filled', ...
+    'DisplayName', 'Relay Nodes');
+scatter(sourcePos(:,1), sourcePos(:,2), 120, 'g', 's', 'filled', ...
+    'DisplayName', 'Source Nodes');
+scatter(destPos(:,1), destPos(:,2), 120, 'r', '^', 'filled', ...
+    'DisplayName', 'Destination Nodes');
+
+% Every string is drawn with Interpreter = 'none': the default 'tex'
+% interpreter needs the TeX font set, which is not always available (the
+% figure then warns "Could not load TeX fonts" and falls back anyway). None
+% of these labels uses TeX markup, so nothing is lost by skipping it.
+title(sprintf('Grid Topology: %d relays, %d pairs, %g m range', ...
+    size(relayPositions, 1), nPairs, range), 'Interpreter', 'none');
+xlabel('Distance X (m)', 'Interpreter', 'none');
+ylabel('Distance Y (m)', 'Interpreter', 'none');
+legend('Location', 'northeastoutside', 'Interpreter', 'none');
+
+% Axes limits follow the node coordinates instead of being hard-coded, so
+% that a different grid or different source positions still fit in view.
+margin = max(spacing, 1);
+axis equal;
+xlim([min(allPos(:,1)) - margin, max(allPos(:,1)) + margin]);
+ylim([min(allPos(:,2)) - margin, max(allPos(:,2)) + margin]);
+
+% Labels are pushed away from the centre of the map, so that they do not
+% overlap the grid when a source sits on the left or on the right edge.
+centreX = mean(allPos(:,1));
+offset  = 0.35 * margin;
+
+for p = 1:nPairs
+    placeLabel(sourcePos(p,:), "S" + p, centreX, offset);
+    placeLabel(destPos(p,:), "D" + (nPairs + p), centreX, offset);
+end
+
+hold off;
+drawnow;
+end
+
+%% ========================================================================
+function placeLabel(pos, label, centreX, offset)
+% Places a text label to the left or to the right of a node, depending on
+% which side of the map the node lies.
+
+if pos(1) <= centreX
+    text(pos(1) - offset, pos(2), label, 'FontWeight', 'bold', ...
+        'HorizontalAlignment', 'right', 'Interpreter', 'none');
+else
+    text(pos(1) + offset, pos(2), label, 'FontWeight', 'bold', ...
+        'HorizontalAlignment', 'left', 'Interpreter', 'none');
 end
 end
