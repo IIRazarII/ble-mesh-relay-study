@@ -51,9 +51,9 @@ results = runPreemptionSimulation( ...
     EnablePreemptionLog = true, EnableAdvEventLog = true);
 ```
 
-It returns a `results` struct — PDR, latency, per-pair breakdown and the
-configuration used — and the array of `CustomMeshNode` objects, for further
-inspection.
+It returns a `results` struct with PDR, latency, the per-pair breakdown and
+the configuration used, together with the array of `CustomMeshNode` objects
+for further inspection.
 
 | Argument | Meaning |
 | --- | --- |
@@ -66,11 +66,14 @@ inspection.
 | `DrainTime` | Tail of the run with no new messages (`0` = half a packet period), so the last message is not counted as transmitted without a chance to arrive |
 | `SimTime` | Explicit run length in seconds; `0` derives it from `PacketsPerSource`, `PacketRate` and `DrainTime` |
 | `ReceiverRange` | Coverage range in metres (9 or 16 in the paper) |
-| `AdvMinGap` / `AdvMaxGap` | T_ChPDU bounds in ms (1 and 10 in the paper) |
-| `Seed` / `RandomStream` | Generator seed and algorithm |
-| `PlotTopology` / `PlotResults` | Draw the network map and the PDR/latency figure |
+| `AdvMinGap` | Lower T_ChPDU bound in ms (1 in the paper) |
+| `AdvMaxGap` | Upper T_ChPDU bound in ms (10 in the paper) |
+| `Seed` | Seed of the random generator |
+| `RandomStream` | Generator used by `rng` |
+| `PlotTopology` | Draw the network map |
+| `PlotResults` | Draw the PDR and latency figure of the run |
 | `Verbose` | Print the header, progress and results |
-| `EnablePreemptionLog` | Print every scan suspend/resume, with remaining T_RSI and channel |
+| `EnablePreemptionLog` | Print every scan suspension and resumption, with remaining T_RSI and channel |
 | `EnableAdvEventLog` | Print the T_ChPDU gaps drawn for each ADV event |
 
 The generator is seeded with `rng(1, "twister")` by default, so a given
