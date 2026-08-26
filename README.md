@@ -37,21 +37,46 @@ All `.m` files must sit in the same folder (or on the MATLAB path).
 
 ## Running a single simulation
 
-Open `runPreemptionSimulation.m`, edit the constants in section 1, and run.
+Every parameter is a name-value argument, so there is nothing to edit in the
+file. Calling the function with no arguments reproduces the Experiment D
+protocol with stateful preemption and a 10 ms Scan Interval.
 
-| Constant | Meaning |
+```matlab
+% Reference setup
+results = runPreemptionSimulation();
+
+% Reduced run with tracing switched on, to inspect the mechanism
+results = runPreemptionSimulation( ...
+    RelayStrategy = 2, ScanInterval = 100e-3, PacketsPerSource = 5, ...
+    EnablePreemptionLog = true, EnableAdvEventLog = true);
+```
+
+It returns a `results` struct — PDR, latency, per-pair breakdown and the
+configuration used — and the array of `CustomMeshNode` objects, for further
+inspection.
+
+| Argument | Meaning |
 | --- | --- |
-| `RELAY_STRATEGY` | `0` without preemption, `1` stateless, `2` stateful |
-| `SCAN_INTERVAL` | T_SI in seconds. The paper sweeps 10–200 ms in 10 ms steps |
-| `SIM_TIME` | Seconds of simulated time. Half a second short of a whole number, so the last message is not counted as transmitted without a chance to arrive |
-| `RECEPTION_RANGE` | Coverage range in metres (9 or 16 in the paper) |
-| `ADV_MIN_GAP` / `ADV_MAX_GAP` | T_ChPDU bounds in ms (1 and 10 in the paper) |
-| `ENABLE_PREEMPTION_LOG` | Print every scan suspend/resume, with remaining T_RSI and channel |
-| `ENABLE_ADV_EVENT_LOG` | Print the T_ChPDU gaps drawn for each ADV event |
+| `RelayStrategy` | `0` without preemption, `1` stateless, `2` stateful |
+| `ScanInterval` | T_SI in seconds. The paper sweeps 10–200 ms in 10 ms steps |
+| `PacketsPerSource` | Application messages per source |
+| `PacketRate` | Cycles per second, per source. With the default `BurstSize = 1` this is the message rate |
+| `BurstSize` | Messages emitted back-to-back in each cycle. Must divide `PacketsPerSource` exactly |
+| `TrafficOnTime` | On period of the generator, in seconds |
+| `DrainTime` | Tail of the run with no new messages (`0` = half a packet period), so the last message is not counted as transmitted without a chance to arrive |
+| `SimTime` | Explicit run length in seconds; `0` derives it from `PacketsPerSource`, `PacketRate` and `DrainTime` |
+| `ReceiverRange` | Coverage range in metres (9 or 16 in the paper) |
+| `AdvMinGap` / `AdvMaxGap` | T_ChPDU bounds in ms (1 and 10 in the paper) |
+| `Seed` / `RandomStream` | Generator seed and algorithm |
+| `PlotTopology` / `PlotResults` | Draw the network map and the PDR/latency figure |
+| `Verbose` | Print the header, progress and results |
+| `EnablePreemptionLog` | Print every scan suspend/resume, with remaining T_RSI and channel |
+| `EnableAdvEventLog` | Print the T_ChPDU gaps drawn for each ADV event |
 
-The seed is fixed with `rng(1, "twister")`, so a given configuration is
-reproducible. A single run leaves a few percentage points of spread in PDR,
-which is why comparing strategies is better done through the campaign.
+The generator is seeded with `rng(1, "twister")` by default, so a given
+configuration is reproducible. A single run leaves a few percentage points of
+spread in PDR, which is why comparing strategies is better done through the
+campaign.
 
 ## Running a campaign
 
